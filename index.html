@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flappy Heart</title>
+    <style>
+        body { 
+            text-align: center; 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #ffccd5; 
+            touch-action: manipulation; /* Prevent double-tap zoom */
+        }
+        canvas { 
+            display: block; 
+            background-color: #ffebef; 
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 5vw; /* Responsive font size */
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            color: red;
+        }
+        #message, #personalizedMessage {
+            position: absolute;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4vw;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            color: red;
+            display: none;
+        }
+        #message { top: 40%; }
+        #personalizedMessage { top: 30%; }
+        #retry {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4vw;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            color: white;
+            background-color: red;
+            border: none;
+            padding: 3vw 6vw;
+            cursor: pointer;
+            display: none;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="message"></div>
+    <div id="personalizedMessage"></div>
+    <button id="retry" onclick="restartGame()">Retry</button>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const messageBox = document.getElementById("message");
+        const retryButton = document.getElementById("retry");
+        const personalizedMessageBox = document.getElementById("personalizedMessage");
+
+        // Set canvas size to fit the screen dynamically
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+
+        const bird = { x: canvas.width * 0.1, y: canvas.height / 2, vy: 0, trail: [] };
+        const gravity = canvas.height * 0.0013;
+        const jump = -canvas.height * 0.0011;
+        let pipes = [];
+        const pipeWidth = canvas.width * 0.12;
+        const pipeGap = canvas.height * 0.3;
+        let score = 0;
+        let gameOver = false;
+        let hearts = [];
+        const messages = ["I love you", "You're the best", "You're my everything", "Don't talk bad about yourself", "You're so cute", "Keep going"];
+        const personalizedMessages = [
+            "Dell, you light up my world!", 
+            "You're the most beautiful person inside and out!", 
+            "Every day with you is a dream come true!", 
+            "You're my happiness, my heart, my love!", 
+            "I am so lucky to have you!", 
+            "Forever and always, you have my heart!"
+        ];
+
+        function spawnPipes() {
+            pipes.push({ x: canvas.width, y: Math.random() * (canvas.height * 0.4) + canvas.height * 0.1 });
+        }
+
+        document.addEventListener("touchstart", () => {
+            if (!gameOver) bird.vy = jump;
+        });
+
+        function updateScore() {
+            document.getElementById("score").innerText = "Score: " + score;
+            if (score % 5 === 0 && score !== 0) {
+                fillWithHearts();
+                showPersonalizedMessage();
+                setTimeout(() => { hearts = []; }, 1500);
+            }
+        }
+
+        function showMessage() {
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            messageBox.innerText = message;
+            messageBox.style.display = "block";
+            setTimeout(() => messageBox.style.display = "none", 2000);
+        }
+
+        function showPersonalizedMessage() {
+            const message = personalizedMessages[Math.floor(Math.random() * personalizedMessages.length)];
+            personalizedMessageBox.innerText = message;
+            personalizedMessageBox.style.display = "block";
+            setTimeout(() => personalizedMessageBox.style.display = "none", 2500);
+        }
+
+        function checkCollision(pipe) {
+            if (
+                bird.x + 10 > pipe.x && bird.x - 10 < pipe.x + pipeWidth &&
+                (bird.y - 10 < pipe.y || bird.y + 10 > pipe.y + pipeGap)
+            ) {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+            retryButton.style.display = "block";
+        }
+
+        function restartGame() {
+            bird.y = canvas.height / 2;
+            bird.vy = 0;
+            bird.trail = [];
+            pipes = [];
+            score = 0;
+            gameOver = false;
+            hearts = [];
+            retryButton.style.display = "none";
+            spawnPipes();
+            update();
+        }
+
+        function fillWithHearts() {
+            for (let i = 0; i < 15; i++) {
+                hearts.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, vy: Math.random() * 2 + 1 });
+            }
+        }
+
+        function drawHeart(x, y, size) {
+            ctx.fillStyle = "red";
+            ctx.beginPath();
+            ctx.moveTo(x, y + size / 4);
+            ctx.bezierCurveTo(x - size / 2, y - size / 2, x - size, y + size / 3, x, y + size);
+            ctx.bezierCurveTo(x + size, y + size / 3, x + size / 2, y - size / 2, x, y + size / 4);
+            ctx.fill();
+        }
+
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            bird.vy += gravity;
+            bird.y += bird.vy;
+
+            bird.trail.push({ x: bird.x, y: bird.y });
+            if (bird.trail.length > 10) bird.trail.shift();
+
+            bird.trail.forEach((t, i) => drawHeart(t.x, t.y, 5 + i));
+            drawHeart(bird.x, bird.y, canvas.width * 0.05);
+
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - canvas.width * 0.5) {
+                spawnPipes();
+            }
+
+            pipes.forEach((pipe, i) => {
+                pipe.x -= canvas.width * 0.005;
+                if (pipe.x + pipeWidth < 0) {
+                    pipes.splice(i, 1);
+                    score++;
+                }
+                ctx.fillStyle = "pink";
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.y);
+                ctx.fillRect(pipe.x, pipe.y + pipeGap, pipeWidth, canvas.height - pipe.y - pipeGap);
+                checkCollision(pipe);
+            });
+
+            updateScore();
+            if (!gameOver) requestAnimationFrame(update);
+        }
+        spawnPipes();
+        update();
+    </script>
+</body>
+</html>
+
+
+
+
